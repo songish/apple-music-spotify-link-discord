@@ -29,7 +29,6 @@ client.on(Events.MessageCreate, async (message) => {
     const link = message.content.match(
       /https?:\/\/(?:itunes\.apple\.com\/|music\.apple\.com\/)(?:[^\/]+\/)?(?:album|artist|song|album\/[^\/]+\/\w+)(?:\/[^\/]+)?\/\d+(?:\?[^\/\s]*)?/
     );
-    console.log(link);
 
     if (link) {
       const apiRequest = await fetch(
