@@ -3,45 +3,7 @@ import { Client, Events, GatewayIntentBits } from "discord.js";
 
 import dotenv from "dotenv";
 dotenv.config();
-type Platform =
-  | "spotify"
-  | "itunes"
-  | "appleMusic"
-  | "youtube"
-  | "youtubeMusic"
-  | "google"
-  | "googleStore"
-  | "pandora"
-  | "deezer"
-  | "tidal"
-  | "amazonStore"
-  | "amazonMusic"
-  | "soundcloud"
-  | "napster"
-  | "yandex"
-  | "spinrilla"
-  | "audius"
-  | "audiomack"
-  | "anghami"
-  | "boomplay";
 
-type APIProvider =
-  | "spotify"
-  | "itunes"
-  | "youtube"
-  | "google"
-  | "pandora"
-  | "deezer"
-  | "tidal"
-  | "amazon"
-  | "soundcloud"
-  | "napster"
-  | "yandex"
-  | "spinrilla"
-  | "audius"
-  | "audiomack"
-  | "anghami"
-  | "boomplay";
 // Create a new client instance
 const client = new Client({
   intents: [
