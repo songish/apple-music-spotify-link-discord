@@ -3,45 +3,7 @@ import { Client, Events, GatewayIntentBits } from "discord.js";
 
 import dotenv from "dotenv";
 dotenv.config();
-type Platform =
-  | "spotify"
-  | "itunes"
-  | "appleMusic"
-  | "youtube"
-  | "youtubeMusic"
-  | "google"
-  | "googleStore"
-  | "pandora"
-  | "deezer"
-  | "tidal"
-  | "amazonStore"
-  | "amazonMusic"
-  | "soundcloud"
-  | "napster"
-  | "yandex"
-  | "spinrilla"
-  | "audius"
-  | "audiomack"
-  | "anghami"
-  | "boomplay";
 
-type APIProvider =
-  | "spotify"
-  | "itunes"
-  | "youtube"
-  | "google"
-  | "pandora"
-  | "deezer"
-  | "tidal"
-  | "amazon"
-  | "soundcloud"
-  | "napster"
-  | "yandex"
-  | "spinrilla"
-  | "audius"
-  | "audiomack"
-  | "anghami"
-  | "boomplay";
 // Create a new client instance
 const client = new Client({
   intents: [
@@ -59,7 +21,6 @@ client.once(Events.ClientReady, (readyClient) => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
-  console.log(message.content);
   if (message.content.includes("https://music.apple.com")) {
     // find the first instance of the link
     const link = message.content.match(/https:\/\/music.apple.com\/.*/);
