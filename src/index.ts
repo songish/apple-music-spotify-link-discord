@@ -43,6 +43,7 @@ client.on(Events.MessageCreate, async (message) => {
         flags: [4096],
         options: {
           allowedMentions: {
+            parse: [],
             repliedUser: false,
           },
         },
