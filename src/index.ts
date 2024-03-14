@@ -236,10 +236,11 @@ client.on(Events.MessageCreate, async (message) => {
 
   if (
     serverConfig.enabledAutoConvertorPlatforms.includes("tidal") &&
-    message.content.includes("https://listen.tidal.com")
+    (message.content.includes("https://listen.tidal.com") ||
+      message.content.includes("https://tidal.com"))
   ) {
     const link = message.content.match(
-      /https?:\/\/listen\.tidal\.com\/(album|track)\/\d+/
+      /https?:\/\/(?:listen\.tidal\.com|tidal\.com)\/(?:track|album)\/\w+/
     );
     if (!link) return;
     const convertedLink = await convert_link(
