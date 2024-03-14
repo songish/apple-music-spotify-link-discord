@@ -3,14 +3,23 @@ import {
   ApplicationCommandType,
   CacheType,
   Client,
+  CommandInteraction,
   ContextMenuCommandBuilder,
   Events,
   GatewayIntentBits,
   MessageContextMenuCommandInteraction,
 } from "discord.js";
 
+import { PrismaClient, Server } from "@prisma/client";
 import dotenv from "dotenv";
+import { addPlatform } from "./commands/addPlatform";
+import { configCommand } from "./commands/config";
+import { setDestinationPlatform } from "./commands/destinationPlatform";
+import { removePlatform } from "./commands/removePlatform";
+import { Command } from "./utils/command";
 dotenv.config();
+
+export const prisma = new PrismaClient();
 
 // Create a new client instance
 const client = new Client({
@@ -21,6 +30,7 @@ const client = new Client({
   ],
 });
 
+// Right click context menu interactions
 const contextAppleMusic = new ContextMenuCommandBuilder()
   .setName("Convert To Apple Music")
   .setType(ApplicationCommandType.Message);
@@ -32,6 +42,9 @@ const contextYoutube = new ContextMenuCommandBuilder()
   .setType(ApplicationCommandType.Message);
 const contextSoundcloud = new ContextMenuCommandBuilder()
   .setName("Convert To SoundCloud")
+  .setType(ApplicationCommandType.Message);
+const contextTidal = new ContextMenuCommandBuilder()
+  .setName("Convert To Tidal")
   .setType(ApplicationCommandType.Message);
 
 async function convert_link(link: string, platform: string) {
@@ -49,15 +62,41 @@ async function convert_link(link: string, platform: string) {
   return platformLink.url;
 }
 
+const slashCommands: Command[] = [
+  addPlatform,
+  removePlatform,
+  setDestinationPlatform,
+  configCommand,
+];
+
 // When the client is ready, run this code (only once).
 // The distinction between `client: Client<boolean>` and `readyClient: Client<true>` is important for TypeScript developers.
 // It makes some properties non-nullable.
 client.once(Events.ClientReady, async (readyClient) => {
+  let guildsForDb = [] as Server[];
+  client.guilds.cache.map((guild) => {
+    guildsForDb.push({
+      id: guild.id,
+      destinationPlatform: "spotify",
+      enabledAutoConvertorPlatforms: ["appleMusic"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  });
+
+  await prisma.server.createMany({
+    data: guildsForDb,
+    skipDuplicates: true,
+  });
+
   await readyClient.application.commands.set([
     contextAppleMusic,
     contextSpotify,
     contextYoutube,
     contextSoundcloud,
+    contextTidal,
+
+    ...slashCommands,
   ]);
   console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
@@ -100,30 +139,185 @@ async function handleContextMenus(
     },
   });
 }
+const handleSlashCommand = async (
+  client: Client,
+  interaction: CommandInteraction
+): Promise<void> => {
+  const slashCommand = slashCommands.find(
+    (c) => c.name === interaction.commandName
+  );
+  if (!slashCommand) {
+    interaction.reply({ content: "An error has occurred" });
+    return;
+  }
+
+  slashCommand.run(client, interaction);
+};
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isMessageContextMenuCommand()) return;
-  if (interaction.commandName === contextAppleMusic.name) {
-    await handleContextMenus(interaction, "appleMusic");
-  }
-  if (interaction.commandName === contextSpotify.name) {
-    await handleContextMenus(interaction, "spotify");
-  }
-  if (interaction.commandName === contextYoutube.name) {
-    await handleContextMenus(interaction, "youtube");
-  }
-  if (interaction.commandName === contextSoundcloud.name) {
-    await handleContextMenus(interaction, "soundcloud");
+  if (interaction.isMessageContextMenuCommand()) {
+    if (interaction.commandName === contextAppleMusic.name) {
+      await handleContextMenus(interaction, "appleMusic");
+    }
+    if (interaction.commandName === contextSpotify.name) {
+      await handleContextMenus(interaction, "spotify");
+    }
+    if (interaction.commandName === contextYoutube.name) {
+      await handleContextMenus(interaction, "youtube");
+    }
+    if (interaction.commandName === contextSoundcloud.name) {
+      await handleContextMenus(interaction, "soundcloud");
+    }
+    if (interaction.commandName === contextTidal.name) {
+      await handleContextMenus(interaction, "tidal");
+    }
+  } else if (
+    interaction.isCommand() &&
+    interaction.isMessageContextMenuCommand() === false
+  ) {
+    await handleSlashCommand(client, interaction);
   }
 });
 
+client.on(Events.GuildCreate, async (guild) => {
+  await prisma.server.create({
+    data: {
+      id: guild.id,
+      destinationPlatform: "spotify",
+      enabledAutoConvertorPlatforms: ["appleMusic"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  });
+});
+
 client.on(Events.MessageCreate, async (message) => {
-  if (message.content.includes("https://music.apple.com")) {
+  if (!message.guild) return;
+
+  let serverConfig = await prisma.server.findUnique({
+    where: {
+      id: message.guild.id,
+    },
+  });
+
+  if (!serverConfig) {
+    serverConfig = {
+      id: message.guild.id,
+      destinationPlatform: "spotify",
+      enabledAutoConvertorPlatforms: ["appleMusic"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
+
+  if (
+    serverConfig.enabledAutoConvertorPlatforms.includes("appleMusic") &&
+    message.content.includes("https://music.apple.com")
+  ) {
     const link = message.content.match(
       /https?:\/\/(?:itunes\.apple\.com\/|music\.apple\.com\/)(?:[^\/]+\/)?(?:album|artist|song|album\/[^\/]+\/\w+)(?:\/[^\/]+)?\/\d+(?:\?[^\/\s]*)?/
     );
     if (!link) return;
-    const convertedLink = await convert_link(link.toString(), "spotify");
+    const convertedLink = await convert_link(
+      link.toString(),
+      serverConfig.destinationPlatform ?? "spotify"
+    );
+    await message.reply({
+      content: `${convertedLink}`,
+      flags: [4096],
+      options: {
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+      },
+    });
+  }
+
+  if (
+    serverConfig.enabledAutoConvertorPlatforms.includes("tidal") &&
+    message.content.includes("https://listen.tidal.com")
+  ) {
+    const link = message.content.match(
+      /https?:\/\/listen\.tidal\.com\/(album|track)\/\d+/
+    );
+    if (!link) return;
+    const convertedLink = await convert_link(
+      link[0],
+      serverConfig.destinationPlatform ?? "spotify"
+    );
+    await message.reply({
+      content: `${convertedLink}`,
+      flags: [4096],
+      options: {
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+      },
+    });
+  }
+
+  if (
+    serverConfig.enabledAutoConvertorPlatforms.includes("spotify") &&
+    message.content.includes("https://open.spotify.com")
+  ) {
+    const link = message.content.match(
+      /https?:\/\/open\.spotify\.com\/(track|album)\/\w+/
+    );
+    if (!link) return;
+    const convertedLink = await convert_link(
+      link[0],
+      serverConfig.destinationPlatform ?? "spotify"
+    );
+    await message.reply({
+      content: `${convertedLink}`,
+      flags: [4096],
+      options: {
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+      },
+    });
+  }
+
+  if (
+    serverConfig.enabledAutoConvertorPlatforms.includes("soundcloud") &&
+    message.content.includes("https://soundcloud.com")
+  ) {
+    const link = message.content.match(
+      /https?:\/\/soundcloud\.com\/[^\/]+\/[^\/]+/
+    );
+    if (!link) return;
+    const convertedLink = await convert_link(
+      link[0],
+      serverConfig.destinationPlatform ?? "spotify"
+    );
+    await message.reply({
+      content: `${convertedLink}`,
+      flags: [4096],
+      options: {
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+      },
+    });
+  }
+
+  if (
+    serverConfig.enabledAutoConvertorPlatforms.includes("youtube") &&
+    message.content.includes("https://youtube.com")
+  ) {
+    const link = message.content.match(
+      /https?:\/\/www\.youtube\.com\/watch\?v=[^&]+/
+    );
+    if (!link) return;
+    const convertedLink = await convert_link(
+      link[0],
+      serverConfig.destinationPlatform ?? "spotify"
+    );
     await message.reply({
       content: `${convertedLink}`,
       flags: [4096],
