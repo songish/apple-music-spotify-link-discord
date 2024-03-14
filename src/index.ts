@@ -240,7 +240,7 @@ client.on(Events.MessageCreate, async (message) => {
       message.content.includes("https://tidal.com"))
   ) {
     const link = message.content.match(
-      /https?:\/\/(?:listen\.tidal\.com|tidal\.com)\/(?:track|album)\/\w+/
+      /https:\/\/(?:listen\.tidal\.com|tidal\.com\/browse)\/(?:album|track)\/(\d+)\/(?:track\/)?(\d+)/
     );
     if (!link) return;
     const convertedLink = await convert_link(
