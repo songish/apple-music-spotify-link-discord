@@ -222,6 +222,19 @@ client.on(Events.MessageCreate, async (message) => {
       link.toString(),
       serverConfig.destinationPlatform ?? "spotify"
     );
+    if (convertedLink === null) {
+      await message.reply({
+        content: "Sorry, I couldn't convert that link.",
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+        options: {
+          ephemeral: true,
+        },
+      });
+      return;
+    }
     await message.reply({
       content: `${convertedLink}`,
       flags: [4096],
@@ -247,6 +260,19 @@ client.on(Events.MessageCreate, async (message) => {
       link[0],
       serverConfig.destinationPlatform ?? "spotify"
     );
+    if (convertedLink === null) {
+      await message.reply({
+        content: "Sorry, I couldn't convert that link.",
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+        options: {
+          ephemeral: true,
+        },
+      });
+      return;
+    }
     await message.reply({
       content: `${convertedLink}`,
       flags: [4096],
@@ -271,6 +297,19 @@ client.on(Events.MessageCreate, async (message) => {
       link[0],
       serverConfig.destinationPlatform ?? "spotify"
     );
+    if (convertedLink === null) {
+      await message.reply({
+        content: "Sorry, I couldn't convert that link.",
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+        options: {
+          ephemeral: true,
+        },
+      });
+      return;
+    }
     await message.reply({
       content: `${convertedLink}`,
       flags: [4096],
@@ -295,6 +334,19 @@ client.on(Events.MessageCreate, async (message) => {
       link[0],
       serverConfig.destinationPlatform ?? "spotify"
     );
+    if (convertedLink === null) {
+      await message.reply({
+        content: "Sorry, I couldn't convert that link.",
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+        options: {
+          ephemeral: true,
+        },
+      });
+      return;
+    }
     await message.reply({
       content: `${convertedLink}`,
       flags: [4096],
@@ -319,6 +371,19 @@ client.on(Events.MessageCreate, async (message) => {
       link[0],
       serverConfig.destinationPlatform ?? "spotify"
     );
+    if (convertedLink === null) {
+      await message.reply({
+        content: "Sorry, I couldn't convert that link.",
+        allowedMentions: {
+          parse: [],
+          repliedUser: false,
+        },
+        options: {
+          ephemeral: true,
+        },
+      });
+      return;
+    }
     await message.reply({
       content: `${convertedLink}`,
       flags: [4096],
