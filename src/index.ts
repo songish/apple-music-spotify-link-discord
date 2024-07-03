@@ -109,26 +109,10 @@ async function handleContextMenus(
     /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/
   );
   if (!link) {
-    await interaction.reply({
-      content: "Sorry, I couldn't convert that link.",
-      allowedMentions: {
-        parse: [],
-        repliedUser: false,
-      },
-      ephemeral: true,
-    });
     return;
   }
   const convertedLink = await convert_link(link[0], platform);
   if (convertedLink === null) {
-    await interaction.reply({
-      content: "Sorry, I couldn't convert that link.",
-      allowedMentions: {
-        parse: [],
-        repliedUser: false,
-      },
-      ephemeral: true,
-    });
     return;
   }
   await interaction.reply({
@@ -223,16 +207,6 @@ client.on(Events.MessageCreate, async (message) => {
       serverConfig.destinationPlatform ?? "spotify"
     );
     if (convertedLink === null) {
-      await message.reply({
-        content: "Sorry, I couldn't convert that link.",
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-        options: {
-          ephemeral: true,
-        },
-      });
       return;
     }
     await message.reply({
@@ -261,16 +235,6 @@ client.on(Events.MessageCreate, async (message) => {
       serverConfig.destinationPlatform ?? "spotify"
     );
     if (convertedLink === null) {
-      await message.reply({
-        content: "Sorry, I couldn't convert that link.",
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-        options: {
-          ephemeral: true,
-        },
-      });
       return;
     }
     await message.reply({
@@ -298,16 +262,6 @@ client.on(Events.MessageCreate, async (message) => {
       serverConfig.destinationPlatform ?? "spotify"
     );
     if (convertedLink === null) {
-      await message.reply({
-        content: "Sorry, I couldn't convert that link.",
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-        options: {
-          ephemeral: true,
-        },
-      });
       return;
     }
     await message.reply({
@@ -335,16 +289,6 @@ client.on(Events.MessageCreate, async (message) => {
       serverConfig.destinationPlatform ?? "spotify"
     );
     if (convertedLink === null) {
-      await message.reply({
-        content: "Sorry, I couldn't convert that link.",
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-        options: {
-          ephemeral: true,
-        },
-      });
       return;
     }
     await message.reply({
@@ -372,16 +316,6 @@ client.on(Events.MessageCreate, async (message) => {
       serverConfig.destinationPlatform ?? "spotify"
     );
     if (convertedLink === null) {
-      await message.reply({
-        content: "Sorry, I couldn't convert that link.",
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-        options: {
-          ephemeral: true,
-        },
-      });
       return;
     }
     await message.reply({
