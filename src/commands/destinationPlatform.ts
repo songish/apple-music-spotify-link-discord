@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { prisma } from "..";
+import { prisma } from "../index";
 import { Command } from "../utils/command";
 
 export const setDestinationPlatform: Command = {

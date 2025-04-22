@@ -48,18 +48,38 @@ const contextTidal = new ContextMenuCommandBuilder()
   .setType(ApplicationCommandType.Message);
 
 async function convert_link(link: string, platform: string) {
-  const apiRequest = await fetch(
-    `https://api.song.link/v1-alpha.1/links?url=${link}&userCountry=US&songIfSingle=true`
-  );
-  const data = (await apiRequest.json()) as any;
-  if (data.linksByPlatform === undefined) {
+  try {
+    const apiRequest = await fetch(
+      `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(
+        link
+      )}&userCountry=US&songIfSingle=true`
+    );
+
+    if (!apiRequest.ok) {
+      console.error(
+        `API request failed: ${apiRequest.status} ${apiRequest.statusText}`
+      );
+      return null;
+    }
+
+    const data = await apiRequest.json();
+
+    if (!data || data.linksByPlatform === undefined) {
+      console.error("No links found in API response");
+      return null;
+    }
+
+    const platformLink = data.linksByPlatform[platform];
+    if (!platformLink || !platformLink.url) {
+      console.error(`No ${platform} link found for the given URL`);
+      return null;
+    }
+
+    return platformLink.url;
+  } catch (error) {
+    console.error("Error converting link:", error);
     return null;
   }
-  const platformLink = data.linksByPlatform[platform];
-  if (platformLink === undefined) {
-    return null;
-  }
-  return platformLink.url;
 }
 
 const slashCommands: Command[] = [
@@ -105,23 +125,49 @@ async function handleContextMenus(
   interaction: MessageContextMenuCommandInteraction<CacheType>,
   platform: string
 ) {
-  const link = interaction.targetMessage.content.match(
-    /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/
-  );
-  if (!link) {
-    return;
+  try {
+    const link = interaction.targetMessage.content.match(
+      /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/
+    );
+
+    if (!link) {
+      await interaction.reply({
+        content: "No valid link found in the message.",
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const convertedLink = await convert_link(link[0], platform);
+    if (!convertedLink) {
+      await interaction.editReply({
+        content: `Sorry, I couldn't find a ${platform} link for this song. The song might not be available on ${platform}.`,
+      });
+      return;
+    }
+
+    await interaction.editReply({
+      content: convertedLink,
+      allowedMentions: {
+        parse: [],
+        repliedUser: false,
+      },
+    });
+  } catch (error) {
+    console.error("Error in handleContextMenus:", error);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({
+        content: "Sorry, something went wrong while processing your request.",
+        ephemeral: true,
+      });
+    } else {
+      await interaction.editReply({
+        content: "Sorry, something went wrong while processing your request.",
+      });
+    }
   }
-  const convertedLink = await convert_link(link[0], platform);
-  if (convertedLink === null) {
-    return;
-  }
-  await interaction.reply({
-    content: `${convertedLink}`,
-    allowedMentions: {
-      parse: [],
-      repliedUser: false,
-    },
-  });
 }
 const handleSlashCommand = async (
   client: Client,
@@ -176,158 +222,121 @@ client.on(Events.GuildCreate, async (guild) => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
-  if (!message.guild) return;
+  try {
+    if (!message.guild) return;
 
-  let serverConfig = await prisma.server.findUnique({
-    where: {
-      id: message.guild.id,
-    },
-  });
-
-  if (!serverConfig) {
-    serverConfig = {
-      id: message.guild.id,
-      destinationPlatform: "spotify",
-      enabledAutoConvertorPlatforms: ["appleMusic"],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-  }
-
-  if (
-    serverConfig.enabledAutoConvertorPlatforms.includes("appleMusic") &&
-    message.content.includes("https://music.apple.com")
-  ) {
-    const link = message.content.match(
-      /https?:\/\/(?:itunes\.apple\.com\/|music\.apple\.com\/)(?:[^\/]+\/)?(?:album|artist|song|album\/[^\/]+\/\w+)(?:\/[^\/]+)?\/\d+(?:\?[^\/\s]*)?/
-    );
-    if (!link) return;
-    const convertedLink = await convert_link(
-      link.toString(),
-      serverConfig.destinationPlatform ?? "spotify"
-    );
-    if (convertedLink === null) {
-      return;
-    }
-    await message.reply({
-      content: `${convertedLink}`,
-      flags: [4096],
-      options: {
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
+    let serverConfig = await prisma.server.findUnique({
+      where: {
+        id: message.guild.id,
       },
     });
-  }
 
-  if (
-    serverConfig.enabledAutoConvertorPlatforms.includes("tidal") &&
-    (message.content.includes("https://listen.tidal.com") ||
-      message.content.includes("https://tidal.com"))
-  ) {
-    const link = message.content.match(
-      /https:\/\/(?:listen\.tidal\.com|tidal\.com\/browse)\/(?:album|track)\/(\d+)(?:\/track\/(\d+))?/
-    );
-    if (!link) return;
-    const convertedLink = await convert_link(
-      link[0],
-      serverConfig.destinationPlatform ?? "spotify"
-    );
-    if (convertedLink === null) {
-      return;
+    if (!serverConfig) {
+      serverConfig = {
+        id: message.guild.id,
+        destinationPlatform: "spotify",
+        enabledAutoConvertorPlatforms: ["appleMusic"],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
     }
-    await message.reply({
-      content: `${convertedLink}`,
-      flags: [4096],
-      options: {
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-      },
-    });
-  }
 
-  if (
-    serverConfig.enabledAutoConvertorPlatforms.includes("spotify") &&
-    message.content.includes("https://open.spotify.com")
-  ) {
-    const link = message.content.match(
-      /https?:\/\/open\.spotify\.com\/(track|album)\/\w+/
-    );
-    if (!link) return;
-    const convertedLink = await convert_link(
-      link[0],
-      serverConfig.destinationPlatform ?? "spotify"
-    );
-    if (convertedLink === null) {
-      return;
-    }
-    await message.reply({
-      content: `${convertedLink}`,
-      flags: [4096],
-      options: {
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-      },
-    });
-  }
+    // Helper function to handle link conversion
+    async function handleLinkConversion(
+      content: string,
+      platform: string,
+      regex: RegExp
+    ) {
+      const link = content.match(regex);
+      if (!link) return;
 
-  if (
-    serverConfig.enabledAutoConvertorPlatforms.includes("soundcloud") &&
-    message.content.includes("https://soundcloud.com")
-  ) {
-    const link = message.content.match(
-      /https?:\/\/soundcloud\.com\/[^\/]+\/[^\/]+/
-    );
-    if (!link) return;
-    const convertedLink = await convert_link(
-      link[0],
-      serverConfig.destinationPlatform ?? "spotify"
-    );
-    if (convertedLink === null) {
-      return;
-    }
-    await message.reply({
-      content: `${convertedLink}`,
-      flags: [4096],
-      options: {
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-      },
-    });
-  }
+      try {
+        const destinationPlatform =
+          serverConfig?.destinationPlatform ?? "spotify";
+        const convertedLink = await convert_link(link[0], destinationPlatform);
 
-  if (
-    serverConfig.enabledAutoConvertorPlatforms.includes("youtube") &&
-    message.content.includes("https://youtube.com")
-  ) {
-    const link = message.content.match(
-      /https?:\/\/www\.youtube\.com\/watch\?v=[^&]+/
-    );
-    if (!link) return;
-    const convertedLink = await convert_link(
-      link[0],
-      serverConfig.destinationPlatform ?? "spotify"
-    );
-    if (convertedLink === null) {
-      return;
+        if (!convertedLink) {
+          console.log(
+            `No ${destinationPlatform} link found for ${platform} link`
+          );
+          return;
+        }
+
+        await message.reply({
+          content: convertedLink,
+          flags: [4096],
+          allowedMentions: {
+            parse: [],
+            repliedUser: false,
+          },
+        });
+      } catch (error) {
+        console.error(`Error converting ${platform} link:`, error);
+      }
     }
-    await message.reply({
-      content: `${convertedLink}`,
-      flags: [4096],
-      options: {
-        allowedMentions: {
-          parse: [],
-          repliedUser: false,
-        },
-      },
-    });
+
+    // Handle Apple Music links
+    if (
+      serverConfig.enabledAutoConvertorPlatforms.includes("appleMusic") &&
+      message.content.includes("https://music.apple.com")
+    ) {
+      await handleLinkConversion(
+        message.content,
+        "Apple Music",
+        /https?:\/\/(?:itunes\.apple\.com\/|music\.apple\.com\/)(?:[^\/]+\/)?(?:album|artist|song|album\/[^\/]+\/\w+)(?:\/[^\/]+)?\/\d+(?:\?[^\/\s]*)?/
+      );
+    }
+
+    // Handle Tidal links
+    if (
+      serverConfig.enabledAutoConvertorPlatforms.includes("tidal") &&
+      (message.content.includes("https://listen.tidal.com") ||
+        message.content.includes("https://tidal.com"))
+    ) {
+      await handleLinkConversion(
+        message.content,
+        "Tidal",
+        /https:\/\/(?:listen\.tidal\.com|tidal\.com\/browse)\/(?:album|track)\/(\d+)(?:\/track\/(\d+))?/
+      );
+    }
+
+    // Handle Spotify links
+    if (
+      serverConfig.enabledAutoConvertorPlatforms.includes("spotify") &&
+      message.content.includes("https://open.spotify.com")
+    ) {
+      await handleLinkConversion(
+        message.content,
+        "Spotify",
+        /https?:\/\/open\.spotify\.com\/(track|album)\/\w+/
+      );
+    }
+
+    // Handle SoundCloud links
+    if (
+      serverConfig.enabledAutoConvertorPlatforms.includes("soundcloud") &&
+      message.content.includes("https://soundcloud.com")
+    ) {
+      await handleLinkConversion(
+        message.content,
+        "SoundCloud",
+        /https?:\/\/soundcloud\.com\/[^\/]+\/[^\/]+/
+      );
+    }
+
+    // Handle YouTube links
+    if (
+      serverConfig.enabledAutoConvertorPlatforms.includes("youtube") &&
+      message.content.includes("https://youtube.com")
+    ) {
+      await handleLinkConversion(
+        message.content,
+        "YouTube",
+        /https?:\/\/www\.youtube\.com\/watch\?v=[^&]+/
+      );
+    }
+  } catch (error) {
+    console.error("Error in MessageCreate event:", error);
   }
 });
 

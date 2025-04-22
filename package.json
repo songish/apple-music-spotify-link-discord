@@ -2,22 +2,25 @@
   "name": "apple-music-spotify-link-discord-bot-goatified",
   "version": "1.0.0",
   "description": "",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "prisma generate && ts-node src/index.ts"
+    "build": "tsc",
+    "start": "prisma generate && node dist/index.js",
+    "dev": "tsc -w"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5",
-    "ts-node": "^10.9.2"
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.5.0"
   },
   "devDependencies": {
-    "@prisma/client": "^5.11.0",
-    "eslint": "^8.57.0",
-    "prisma": "^5.11.0"
+    "@prisma/client": "^6.6.0",
+    "@types/node": "^20.11.24",
+    "eslint": "^9.25.1",
+    "prisma": "^6.6.0",
+    "typescript": "^5.3.3"
   }
 }
