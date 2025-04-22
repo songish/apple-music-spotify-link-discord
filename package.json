@@ -1,15 +1,15 @@
 {
   "name": "apple-music-spotify-link-discord-bot-goatified",
   "version": "1.0.0",
-  "description": "",
+  "description": "Discord bot that converts music links between different platforms",
   "main": "dist/index.js",
+  "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "prisma generate && node dist/index.js",
     "dev": "tsc -w"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -22,5 +22,8 @@
     "eslint": "^9.25.1",
     "prisma": "^6.6.0",
     "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
